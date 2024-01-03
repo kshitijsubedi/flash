@@ -4,11 +4,6 @@ const bodyParser = require("body-parser");
 const puppeteer = require("puppeteer");
 const app = express();
 
-// Authorization header check middleman
-app.use((req, res, next) => {
-	if (req.headers.authorization !== process.env.AUTH) return res.writeHead(401), res.end();
-	next();
-});
 // Use the body-parser Json
 app.use(bodyParser.json());
 
@@ -34,6 +29,7 @@ app.use(bodyParser.json());
 			if (req.headers["content-type"] !== "application/json") return res.writeHead(415);
 			// Required parameters
 			if (!req.body.url || !req.body.screenWidth || !req.body.screenHeight) return req.writeHead(400);
+			console.log('Received:',req.body.url)
 
 			page = await browser.newPage();
 			await page.setJavaScriptEnabled(req.body.enableJavaScript ?? true);
