@@ -1,5 +1,5 @@
 <div align="center">
-    <strong><h3>Flash</h3></strong>
+    <strong><h3>Flash 2</h3></strong>
     <p>An open source screenshot API built with Puppeteer and Express</p><hr />
 </div>
 
