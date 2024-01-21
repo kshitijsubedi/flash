@@ -1,109 +1,112 @@
-require("dotenv").config();
-const express = require("express");
-const bodyParser = require("body-parser");
-const puppeteer = require("puppeteer");
+import dotenv from "dotenv";
+dotenv.config();
+
+import express from "express";
+import bodyParser from "body-parser";
+import puppeteer from "puppeteer";
+
 const app = express();
 
 // Use the body-parser Json
 app.use(bodyParser.json());
 
 (async () => {
-	let browser = await puppeteer.launch({
-		headless: "new",
-		args: ["--no-sandbox"],
-		protocolTimeout: 180_000 * 2, // Timeout setting for individual protocol (CDP) calls. (https://pptr.dev/api/puppeteer.browserconnectoptions#properties)
-	});
+ let browser = await puppeteer.launch({
+    headless: "new",
+    args: ["--no-sandbox"],
+    protocolTimeout: 180_000 * 2,
+ });
 
-	browser.on("disconnected", async () => {
-		browser = await puppeteer.launch({
-			headless: "new",
-			args: ["--no-sandbox"],
-			protocolTimeout: 180_000 * 2, // Timeout setting for individual protocol (CDP) calls. (https://pptr.dev/api/puppeteer.browserconnectoptions#properties)
-		});
-	});
+ browser.on("disconnected", async () => {
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: ["--no-sandbox"],
+      protocolTimeout: 180_000 * 2,
+    });
+ });
 
-	app.get("/",(req,res)=>{
-		res.json({'message':'hey!'});
-	});
+ app.get("/",(req,res)=>{
+    res.json({'message':'hey!'});
+ });
 
-	app.post("/", async (req, res) => {
-		// Bring variable outside the try-catch scope so it can be closed at the end
-		let page;
-		try {
-			if (req.headers["content-type"] !== "application/json") return res.writeHead(415);
-			// Required parameters
-			if (!req.body.url || !req.body.screenWidth || !req.body.screenHeight) return req.writeHead(400);
-			console.log('Received:',req.body.url)
+ app.post("/", async (req, res) => {
+    // Bring variable outside the try-catch scope so it can be closed at the end
+    let page;
+    try {
+      if (req.headers["content-type"] !== "application/json") return res.writeHead(415);
+      // Required parameters
+      if (!req.body.url || !req.body.screenWidth || !req.body.screenHeight) return req.writeHead(400);
+      console.log('Received:',req.body.url)
 
-			page = await browser.newPage();
-			await page.setJavaScriptEnabled(req.body.enableJavaScript ?? true);
-			await page.setViewport({
-				width: req.body.screenWidth,
-				height: req.body.screenHeight,
-				deviceScaleFactor: req.body.scale || 1,
-			});
-			await page.goto(req.body.url);
+      page = await browser.newPage();
+      await page.setJavaScriptEnabled(req.body.enableJavaScript ?? true);
+      await page.setViewport({
+        width: req.body.screenWidth,
+        height: req.body.screenHeight,
+        deviceScaleFactor: req.body.scale || 1,
+      });
+      await page.goto(req.body.url);
 
-			// Timeout parameter, end the process early and don't return the image because it's 'taking too long'
-			let operationsComplete = false;
-			if (req.body.timeout) {
-				setTimeout(async () => {
-					if (!operationsComplete) {
-						await page.close();
-						page = null;
+      // Timeout parameter, end the process early and don't return the image because it's 'taking too long'
+      let operationsComplete = false;
+      if (req.body.timeout) {
+        setTimeout(async () => {
+          if (!operationsComplete) {
+            await page.close();
+            page = null;
 
-						if (res.writable) {
-							res.writeHead(408);
-						}
-						if (!res.closed) {
-							res.end();
-						}
-					}
-				}, req.body.timeout);
-			}
+            if (res.writable) {
+              res.writeHead(408);
+            }
+            if (!res.closed) {
+              res.end();
+            }
+          }
+        }, req.body.timeout);
+      }
 
-			if (req.body.waitForNetworkIdle && page) {
-				await page.waitForNetworkIdle();
-			}
+      if (req.body.waitForNetworkIdle && page) {
+        await page.waitForNetworkIdle();
+      }
 
-			if (req.body.waitForSelector && page) {
-				await page.waitForSelector(req.body.waitForSelector);
-			}
+      if (req.body.waitForSelector && page) {
+        await page.waitForSelector(req.body.waitForSelector);
+      }
 
-			operationsComplete = true;
+      operationsComplete = true;
 
-			if (!page) return;
+      if (!page) return;
 
-			let options = {
-				type: req.body.type || "png",
-				fullPage: !!req.body.full,
-				clip: req.body.clip,
-				omitBackground: !!req.body.omitBackground,
-			};
+      let options = {
+        type: req.body.type || "png",
+        fullPage: !!req.body.full,
+        clip: req.body.clip,
+        omitBackground: !!req.body.omitBackground,
+      };
 
-			if (req.body.quality && req.body.type !== "png") {
-				options.quality = req.body.quality;
-			}
+      if (req.body.quality && req.body.type !== "png") {
+        options.quality = req.body.quality;
+      }
 
-			const screenshot = await page.screenshot(options);
-			if (res.writable) {
-				res.write(screenshot);
-			}
-		} catch (err) {
-			console.error(err);
+      const screenshot = await page.screenshot(options);
+      if (res.writable) {
+        res.write(screenshot);
+      }
+    } catch (err) {
+      console.error(err);
 
-			if (res.writable) {
-				res.writeHead(500);
-			}
-		} finally {
-			res.end();
+      if (res.writable) {
+        res.writeHead(500);
+      }
+    } finally {
+      res.end();
 
-			if (page) {
-				// Close the page as it won't be used anymore, catch the error and do nothing with it
-				page.close().catch(() => {});
-			}
-		}
-	});
+      if (page) {
+        // Close the page as it won't be used anymore, catch the error and do nothing with it
+        page.close().catch(() => {});
+      }
+    }
+ });
 })();
 
 app.listen(process.env.PORT);
