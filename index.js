@@ -22,6 +22,10 @@ app.use(bodyParser.json());
 		});
 	});
 
+	app.get("/",(req,res)=>{
+		res.json({'message':'hey!'});
+	});
+
 	app.post("/", async (req, res) => {
 		// Bring variable outside the try-catch scope so it can be closed at the end
 		let page;
