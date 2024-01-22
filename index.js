@@ -125,8 +125,8 @@ app.use(bodyParser.json());
       page = await browser.newPage();
       await page.setJavaScriptEnabled(req.body.enableJavaScript ?? true);
       await page.setViewport({
-        width: req.body.screenWidth,
-        height: req.body.screenHeight,
+        width: req.body.screenWidth || 1920,
+        height: req.body.screenHeight || 1080,
         deviceScaleFactor: req.body.scale || 1,
       });
       await page.waitForTimeout(5000);
