@@ -32,15 +32,14 @@ app.use(bodyParser.json());
       if (req.headers["content-type"] !== "application/json")
         return res.writeHead(415);
       // Required parameters
-      if (!req.body.url || !req.body.screenWidth || !req.body.screenHeight)
-        return req.writeHead(400);
+      if (!req.body.url) return req.writeHead(400);
       console.log("Received:", req.body.url);
 
       page = await browser.newPage();
       await page.setJavaScriptEnabled(req.body.enableJavaScript ?? true);
       await page.setViewport({
-        width: req.body.screenWidth,
-        height: req.body.screenHeight,
+        width: req.body.screenWidth || 1920,
+        height: req.body.screenHeight || 1080,
         deviceScaleFactor: req.body.scale || 1,
       });
       await page.goto(req.body.url);
@@ -102,7 +101,7 @@ app.use(bodyParser.json());
           throw new Error(`Unexpected response ${response.statusText}`);
 
         const data = await response.json();
-        res.json(data.data);
+        res.json({ url: data.data.url });
       }
     } catch (err) {
       console.error(err);
