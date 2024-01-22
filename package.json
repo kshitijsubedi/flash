@@ -11,6 +11,7 @@
     "puppeteer-core": "^21.7.0"
   },
   "scripts": {
-    "postinstall": "npx puppeteer browsers install chrome"
+    "postinstall": "npx puppeteer browsers install chrome",
+    "start": "node index.js"
   }
 }

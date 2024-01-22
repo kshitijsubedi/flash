@@ -11,32 +11,33 @@ const app = express();
 app.use(bodyParser.json());
 
 (async () => {
- let browser = await puppeteer.launch({
+  let browser = await puppeteer.launch({
     headless: "new",
     args: ["--no-sandbox"],
     protocolTimeout: 180_000 * 2,
- });
+  });
 
- browser.on("disconnected", async () => {
+  browser.on("disconnected", async () => {
     browser = await puppeteer.launch({
       headless: "new",
       args: ["--no-sandbox"],
       protocolTimeout: 180_000 * 2,
     });
- });
+  });
+  app.get("/", (req, res) => {
+    res.json({ message: "hey!" });
+  });
 
- app.get("/",(req,res)=>{
-    res.json({'message':'hey!'});
- });
-
- app.post("/", async (req, res) => {
+  app.post("/", async (req, res) => {
     // Bring variable outside the try-catch scope so it can be closed at the end
     let page;
     try {
-      if (req.headers["content-type"] !== "application/json") return res.writeHead(415);
+      if (req.headers["content-type"] !== "application/json")
+        return res.writeHead(415);
       // Required parameters
-      if (!req.body.url || !req.body.screenWidth || !req.body.screenHeight) return req.writeHead(400);
-      console.log('Received:',req.body.url)
+      if (!req.body.url || !req.body.screenWidth || !req.body.screenHeight)
+        return req.writeHead(400);
+      console.log("Received:", req.body.url);
 
       page = await browser.newPage();
       await page.setJavaScriptEnabled(req.body.enableJavaScript ?? true);
@@ -75,10 +76,10 @@ app.use(bodyParser.json());
 
       operationsComplete = true;
 
-      if (!page) return;
+      if (!page) return "Null";
 
       let options = {
-        type: req.body.type || "png",
+        encoding: "base64",
         fullPage: !!req.body.full,
         clip: req.body.clip,
         omitBackground: !!req.body.omitBackground,
@@ -90,7 +91,21 @@ app.use(bodyParser.json());
 
       const screenshot = await page.screenshot(options);
       if (res.writable) {
-        res.write(screenshot);
+        // res.write(screenshot); //Send the image to the client
+        const form = new FormData();
+        form.append("key", "315122a73b95ac7b239b81134dff89cb");
+        form.append("image", screenshot);
+
+        const response = await fetch("https://api.imgbb.com/1/upload", {
+          method: "POST",
+          body: form,
+        });
+
+        if (!response.ok)
+          throw new Error(`Unexpected response ${response.statusText}`);
+
+        const data = await response.json();
+        res.json(data.data);
       }
     } catch (err) {
       console.error(err);
@@ -106,7 +121,14 @@ app.use(bodyParser.json());
         page.close().catch(() => {});
       }
     }
- });
+  });
 })();
 
-app.listen(process.env.PORT);
+app.listen(9898, () => {
+  console.log(`app listening on port 9898`);
+});
+
+process.on("SIGINT", () => {
+  console.log("Ctrl-C was pressed");
+  process.exit();
+});
