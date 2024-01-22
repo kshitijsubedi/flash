@@ -84,7 +84,7 @@ app.use(bodyParser.json());
       if (req.body.quality && req.body.type !== "png") {
         options.quality = req.body.quality;
       }
-
+      await page.waitForTimeout(3000);
       const screenshot = await page.screenshot(options);
       if (res.writable) {
         // res.write(screenshot); //Send the image to the client
@@ -129,9 +129,8 @@ app.use(bodyParser.json());
         height: req.body.screenHeight || 1080,
         deviceScaleFactor: req.body.scale || 1,
       });
-      await page.waitForTimeout(5000);
+      page.setDefaultNavigationTimeout(0);
       await page.goto(req.body.url);
-
       const html = await page.content();
       const regex = /[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+/g;
       const emails = html.match(regex);
