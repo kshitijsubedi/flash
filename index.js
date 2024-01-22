@@ -1,10 +1,7 @@
-import dotenv from "dotenv";
-dotenv.config();
-
-import express from "express";
-import bodyParser from "body-parser";
-import puppeteer from "puppeteer";
-
+require("dotenv").config();
+const express = require("express");
+const bodyParser = require("body-parser");
+const puppeteer = require("puppeteer");
 const app = express();
 
 // Use the body-parser Json
