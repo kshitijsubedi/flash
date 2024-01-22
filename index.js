@@ -119,6 +119,24 @@ app.use(bodyParser.json());
       }
     }
   });
+
+  app.post("/email", async (req, res) => {
+    let page;
+    page = await browser.newPage();
+    await page.setJavaScriptEnabled(req.body.enableJavaScript ?? true);
+    await page.setViewport({
+      width: req.body.screenWidth,
+      height: req.body.screenHeight,
+      deviceScaleFactor: req.body.scale || 1,
+    });
+    await page.waitForTimeout(5000);
+    await page.goto(req.body.url);
+
+    const html = await page.content();
+    const regex = /[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+/g;
+    const emails = html.match(regex);
+    res.json({ emails: emails });
+  });
 })();
 
 app.listen(9898, () => {
