@@ -3,6 +3,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const puppeteer = require("puppeteer");
 const app = express();
+const { blurhashFromURL } = require("blurhash-from-url");
 
 // Use the body-parser Json
 app.use(bodyParser.json());
@@ -119,7 +120,7 @@ app.use(bodyParser.json());
     }
   });
 
-  app.post("/email", async (req, res) => {
+  app.post("/scrap", async (req, res) => {
     try {
       let page;
       page = await browser.newPage();
@@ -132,9 +133,21 @@ app.use(bodyParser.json());
       page.setDefaultNavigationTimeout(0);
       await page.goto(req.body.url);
       const html = await page.content();
+      const imageSrcs = await page.$$eval("img", (imgs) =>
+        imgs.map((img) => ({
+          url: img.src,
+          alt: img.alt ?? "",
+        }))
+      );
       const regex = /[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+/g;
       const emails = html.match(regex);
-      res.json({ emails: emails });
+      const assets = [];
+      for (const img of imageSrcs) {
+        const hash = await blurhashFromURL(img.url, 32, 32);
+        img.blurhash = hash.encoded;
+        assets.push(img);
+      }
+      res.json({ emails, assets });
     } catch (err) {
       console.error(err);
       res.writeHead(500);
