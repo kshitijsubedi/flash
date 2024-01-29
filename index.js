@@ -143,9 +143,13 @@ app.use(bodyParser.json());
       const emails = html.match(regex);
       const assets = [];
       for (const img of imageSrcs) {
-        const hash = await blurhashFromURL(img.url, 32, 32);
-        img.blurhash = hash.encoded;
-        assets.push(img);
+        try {
+          const hash = await blurhashFromURL(img.url, 32, 32);
+          img.blurhash = hash.encoded;
+          assets.push(img);
+        } catch (err) {
+          console.log(err);
+        }
       }
       res.json({ emails, assets });
     } catch (err) {
