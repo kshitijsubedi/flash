@@ -102,10 +102,11 @@ app.use(bodyParser.json());
           throw new Error(`Unexpected response ${response.statusText}`);
 
         const data = await response.json();
+        console.log("Generated", req.body.url)
         res.json({ url: data.data.url });
       }
     } catch (err) {
-      console.error(err);
+      console.error(req.body.url, err);
 
       if (res.writable) {
         res.writeHead(500);
