@@ -12,14 +12,14 @@ app.use(bodyParser.json());
   let browser = await puppeteer.launch({
     headless: "new",
     args: ["--no-sandbox"],
-    protocolTimeout: 180_000 * 2,
+    protocolTimeout: 180_000 * 4,
   });
 
   browser.on("disconnected", async () => {
     browser = await puppeteer.launch({
       headless: "new",
       args: ["--no-sandbox"],
-      protocolTimeout: 180_000 * 2,
+      protocolTimeout: 180_000 * 4,
     });
   });
   app.get("/", (req, res) => {
