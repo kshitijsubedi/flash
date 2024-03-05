@@ -1,9 +1,11 @@
-require("dotenv").config();
-const express = require("express");
-const bodyParser = require("body-parser");
-const puppeteer = require("puppeteer");
+import express from "express";
+import bodyParser from "body-parser";
+import puppeteer from "puppeteer";
+import { blurhashFromURL } from "blurhash-from-url";
+import createGIF from "./gif.js";
+import "dotenv/config";
+
 const app = express();
-const { blurhashFromURL } = require("blurhash-from-url");
 
 // Use the body-parser Json
 app.use(bodyParser.json());
@@ -22,6 +24,7 @@ app.use(bodyParser.json());
       protocolTimeout: 180_000 * 8,
     });
   });
+
   app.get("/", (req, res) => {
     res.json({ message: "hey!" });
   });
@@ -29,70 +32,73 @@ app.use(bodyParser.json());
   app.post("/", async (req, res) => {
     // Bring variable outside the try-catch scope so it can be closed at the end
     let page;
+    let screenshot;
     try {
       if (req.headers["content-type"] !== "application/json")
         return res.writeHead(415);
       // Required parameters
       if (!req.body.url) return req.writeHead(400);
-      console.log("Received:", req.body.url);
+      console.log("Received:", req.body.url, req.body.gif);
 
       page = await browser.newPage();
-      await page.setJavaScriptEnabled(req.body.enableJavaScript ?? true);
-      await page.setViewport({
-        width: req.body.screenWidth || 1920,
-        height: req.body.screenHeight || 1920,
-        deviceScaleFactor: req.body.scale || 1,
-      });
-      await page.goto(req.body.url);
+      if (req.body.gif) {
+        screenshot = await createGIF(req.body.url, page);
+      } else {
+        await page.setJavaScriptEnabled(req.body.enableJavaScript ?? true);
+        await page.setViewport({
+          width: req.body.screenWidth || 1920,
+          height: req.body.screenHeight || 1920,
+          deviceScaleFactor: req.body.scale || 1,
+        });
+        await page.goto(req.body.url);
 
-      // Timeout parameter, end the process early and don't return the image because it's 'taking too long'
-      let operationsComplete = false;
-      if (req.body.timeout) {
-        setTimeout(async () => {
-          if (!operationsComplete) {
-            await page.close();
-            page = null;
+        // Timeout parameter, end the process early and don't return the image because it's 'taking too long'
+        let operationsComplete = false;
+        if (req.body.timeout) {
+          setTimeout(async () => {
+            if (!operationsComplete) {
+              await page.close();
+              page = null;
 
-            if (res.writable) {
-              res.writeHead(408);
+              if (res.writable) {
+                res.writeHead(408);
+              }
+              if (!res.closed) {
+                res.end();
+              }
             }
-            if (!res.closed) {
-              res.end();
-            }
-          }
-        }, req.body.timeout);
+          }, req.body.timeout);
+        }
+
+        if (req.body.waitForNetworkIdle && page) {
+          await page.waitForNetworkIdle();
+        }
+
+        if (req.body.waitForSelector && page) {
+          await page.waitForSelector(req.body.waitForSelector);
+        }
+
+        operationsComplete = true;
+
+        if (!page) return "Null";
+
+        let options = {
+          encoding: "base64",
+          fullPage: !!req.body.full,
+          clip: req.body.clip,
+          omitBackground: !!req.body.omitBackground,
+        };
+
+        if (req.body.quality && req.body.type !== "png") {
+          options.quality = req.body.quality;
+        }
+        await page.waitForTimeout(3000);
+        screenshot = await page.screenshot(options);
       }
-
-      if (req.body.waitForNetworkIdle && page) {
-        await page.waitForNetworkIdle();
-      }
-
-      if (req.body.waitForSelector && page) {
-        await page.waitForSelector(req.body.waitForSelector);
-      }
-
-      operationsComplete = true;
-
-      if (!page) return "Null";
-
-      let options = {
-        encoding: "base64",
-        fullPage: !!req.body.full,
-        clip: req.body.clip,
-        omitBackground: !!req.body.omitBackground,
-      };
-
-      if (req.body.quality && req.body.type !== "png") {
-        options.quality = req.body.quality;
-      }
-      await page.waitForTimeout(3000);
-      const screenshot = await page.screenshot(options);
       if (res.writable) {
-        // res.write(screenshot); //Send the image to the client
         const form = new FormData();
         form.append("key", "315122a73b95ac7b239b81134dff89cb");
         form.append("image", screenshot);
-
         const response = await fetch("https://api.imgbb.com/1/upload", {
           method: "POST",
           body: form,
