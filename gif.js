@@ -1,4 +1,3 @@
-import fs from "fs";
 import GIFEncoder from "gifencoder";
 import { createCanvas, Image } from "canvas";
 
